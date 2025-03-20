@@ -29,7 +29,7 @@ const App = () => {
   }, []);
 
   return (
-    <Router>
+    <Router basename="/calendar-webapp">
       <Routes>
         {/* Redirect to Dashboard if logged in, otherwise go to Login */}
         <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
