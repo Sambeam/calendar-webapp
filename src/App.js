@@ -9,13 +9,9 @@ import "./styles.css";
 const App = () => {
   const [user, setUser] = useState(() => {
     const session = JSON.parse(localStorage.getItem("session"));
-    if (session && Date.now() < session.expiresAt) {
-      return session.user;
-    }
-    return null;
+    return session && Date.now() < session.expiresAt ? session.user : null;
   });
 
-  // Auto-logout when session expires
   useEffect(() => {
     const checkSession = () => {
       const session = JSON.parse(localStorage.getItem("session"));
@@ -24,20 +20,17 @@ const App = () => {
         setUser(null);
       }
     };
-    const interval = setInterval(checkSession, 1000 * 60); // Check every minute
+    const interval = setInterval(checkSession, 1000 * 60);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <Router basename="/calendar-webapp">
+    <Router>  {/* ✅ No `basename` needed */}
       <Routes>
-        {/* Redirect to Dashboard if logged in, otherwise go to Login */}
         <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/signup" element={<SignUp setUser={setUser} />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* Protect Dashboard Route */}
         <Route path="/dashboard" element={user ? <Dashboard user={user} setUser={setUser} /> : <Navigate to="/login" />} />
       </Routes>
     </Router>
