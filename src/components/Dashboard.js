@@ -1,255 +1,214 @@
-import React, { useState, useEffect } from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import React, { useEffect, useState } from "react";
+import { Calendar, momentLocalizer, Views } from "react-big-calendar";
+import moment from "moment";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
+import { auth } from "../firebase";
+import { useNavigate } from "react-router-dom";
 import Modal from "react-modal";
 import "../styles.css";
 
+const localizer = momentLocalizer(moment);
 Modal.setAppElement("#root");
 
-const Dashboard = ({ user, setUser }) => {
-  const [events, setEvents] = useState(() => JSON.parse(localStorage.getItem("events")) || []);
+const Dashboard = () => {
+  const [events, setEvents] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [eventData, setEventData] = useState({ title: "", start: "", end: "" });
-
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem("darkMode")) || false);
-  const [notifications, setNotifications] = useState(() => JSON.parse(localStorage.getItem("notifications")) || false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState("month");
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    start: new Date(),
+    end: new Date(),
+    color: "#3174ad",
+  });
 
-  // Apply Dark Mode
+  const user = auth.currentUser;
+  const navigate = useNavigate();
+
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("darkMode", JSON.stringify(darkMode));
   }, [darkMode]);
 
   useEffect(() => {
-    localStorage.setItem("events", JSON.stringify(events));
-  }, [events]);
+    if (!user) return;
+    const db = getDatabase();
+    const eventsRef = ref(db, `events/${user.uid}`);
+    onValue(eventsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const loaded = Object.entries(data).map(([id, event]) => ({
+        id,
+        ...event,
+        start: new Date(event.start),
+        end: new Date(event.end),
+        allDay: false,
+      }));
+      setEvents(loaded);
+    });
+  }, [user]);
 
-  // ✅ **Handle Clicking a Date to Add an Event**
-  const handleDateClick = (info) => {
-    setEventData({ title: "", start: info.dateStr, end: info.dateStr });
-    setSelectedEvent(null);
-    setModalOpen(true);
-  };
-
-  // ✅ **Handle Clicking an Event to Edit/Delete**
-  const handleEventClick = (info) => {
-    const event = events.find((e) => e.id === info.event.id);
-    setEventData(event);
-    setSelectedEvent(event);
-    setModalOpen(true);
-  };
-
-  // ✅ **Handle Saving an Event (New or Edited)**
-const handleEventSubmit = () => {
-  if (!eventData.title.trim()) {
-    alert("Event title cannot be empty!");
-    return;
-  }
-
-  // ✅ Ensure Correct Date & Time Format
-  const startDateTime = eventData.start + (eventData.startTime ? `T${eventData.startTime}` : "T00:00");
-  const endDateTime = eventData.end + (eventData.endTime ? `T${eventData.endTime}` : "T23:59");
-
-  const newEvent = {
-    id: selectedEvent ? selectedEvent.id : String(Date.now()),
-    title: eventData.title,
-    start: startDateTime,
-    end: endDateTime,
-    description: eventData.description || "",
-    color: eventData.color || "#007bff",
-  };
-
-  if (selectedEvent) {
-    // Editing existing event
-    setEvents(events.map((e) => (e.id === selectedEvent.id ? newEvent : e)));
-  } else {
-    // Adding new event
-    setEvents([...events, newEvent]);
-  }
-
-  setModalOpen(false);
-};
-
-
-  // ✅ **Handle Deleting an Event**
-  const handleEventDelete = () => {
-    setEvents(events.filter((e) => e.id !== selectedEvent.id));
-    setModalOpen(false);
-  };
-
-  // ✅ **Handle Logout**
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+    auth.signOut().then(() => navigate("/login"));
+  };
+
+  const handleSelectSlot = ({ start, end }) => {
+    setSelectedEvent(null);
+    setFormData({ title: "", description: "", start, end, color: "#3174ad" });
+    setModalOpen(true);
+  };
+
+  const handleSelectEvent = (event) => {
+    setSelectedEvent(event);
+    setFormData({ ...event });
+    setModalOpen(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!formData.title.trim()) return alert("Title is required");
+    const db = getDatabase();
+    const payload = {
+      ...formData,
+      start: new Date(formData.start).toISOString(),
+      end: new Date(formData.end).toISOString(),
+    };
+
+    const path = `events/${user.uid}`;
+    selectedEvent
+      ? update(ref(db, `${path}/${selectedEvent.id}`), payload)
+      : push(ref(db, path), payload);
+
+    setModalOpen(false);
+    setSelectedEvent(null);
+    setFormData({ title: "", description: "", start: new Date(), end: new Date(), color: "#3174ad" });
+  };
+
+  const handleDelete = () => {
+    const db = getDatabase();
+    remove(ref(db, `events/${user.uid}/${selectedEvent.id}`));
+    setModalOpen(false);
   };
 
   return (
     <div className={`dashboard-container ${darkMode ? "dark" : ""}`}>
       {/* Sidebar */}
-      <div className={`sidebar ${darkMode ? "dark" : ""}`}>
-        <h2 className="sidebar-title">Dashboard</h2>
-        <nav>
-          <ul>
-            <li><button onClick={() => setSettingsOpen(true)}>Settings</button></li>
-            <li><button onClick={handleLogout}>Logout</button></li>
-          </ul>
-        </nav>
-      </div>
+      <aside className={`sidebar ${darkMode ? "dark" : ""}`}>
+        <h2>Dashboard</h2>
+        <p>{user?.email}</p>
+        <button onClick={() => setSettingsOpen(true)}>Settings</button>
+        <button onClick={handleLogout} className="logout-btn">Logout</button>
+      </aside>
 
-      {/* Calendar */}
-      <div className="content">
-        <h2 className="welcome-text">Welcome, {user.email}</h2>
-        <div className={`calendar-container ${darkMode ? "dark" : ""}`}>
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            editable
-            selectable
-            events={events.map(event => ({
-              ...event,
-              backgroundColor: event.color || "#007bff", // ✅ Apply selected color
-            }))}
-            dateClick={handleDateClick}
-            eventClick={handleEventClick}
-            eventDrop={(info) => {
-              setEvents(events.map((e) => (e.id === info.event.id ? { ...e, start: info.event.startStr, end: info.event.endStr } : e)));
-            }}
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
-            }}
+      {/* Main Calendar View */}
+      <main className="content">
+        <h2 className="mb-4">Calendar</h2>
+        <Calendar
+          localizer={localizer}
+          events={events}
+          startAccessor="start"
+          endAccessor="end"
+          views={["month", "week", "day", "agenda"]}
+          step={30}
+          selectable
+          style={{ height: 600 }}
+          date={currentDate}
+          onNavigate={(date) => setCurrentDate(date)}
+          view={currentView}
+          onView={(view) => setCurrentView(view)}
+          onSelectSlot={handleSelectSlot}
+          onSelectEvent={handleSelectEvent}
+          eventPropGetter={(event) => ({
+            style: {
+                  backgroundColor: event.color || "#3174ad",
+                  color: "#fff",
+                  borderRadius: "4px",
+                  padding: "2px",
+              },
+            })}
           />
-        </div>
-      </div>
-
-      {/* ✅ Event Modal */}
-      {/* ✅ Updated Event Modal */}
-<Modal isOpen={modalOpen} onRequestClose={() => setModalOpen(false)} className="modal" overlayClassName="modal-overlay">
-  <div className="modal-content">
-    <h3 className="text-lg font-bold mb-3">{selectedEvent ? "Edit Event" : "Add Event"}</h3>
-    
-    {/* Event Title */}
-    <label className="block text-gray-700 dark:text-gray-300">Event Title</label>
-    <input
-      type="text"
-      placeholder="Enter event title"
-      className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-      value={eventData.title}
-      onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
-      required
-    />
-
-    {/* Event Date & Time */}
-    <div className="flex gap-2 mt-3">
-      <div className="flex-1">
-        <label className="block text-gray-700 dark:text-gray-300">Start Date</label>
-        <input
-          type="date"
-          className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-          value={eventData.start}
-          onChange={(e) => setEventData({ ...eventData, start: e.target.value })}
-        />
-      </div>
-      <div className="flex-1">
-        <label className="block text-gray-700 dark:text-gray-300">Start Time</label>
-        <input
-          type="time"
-          className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-          value={eventData.startTime || ""}
-          onChange={(e) => setEventData({ ...eventData, startTime: e.target.value })}
-        />
-      </div>
-    </div>
-
-    <div className="flex gap-2 mt-3">
-      <div className="flex-1">
-        <label className="block text-gray-700 dark:text-gray-300">End Date</label>
-        <input
-          type="date"
-          className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-          value={eventData.end}
-          onChange={(e) => setEventData({ ...eventData, end: e.target.value })}
-        />
-      </div>
-      <div className="flex-1">
-        <label className="block text-gray-700 dark:text-gray-300">End Time</label>
-        <input
-          type="time"
-          className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-          value={eventData.endTime || ""}
-          onChange={(e) => setEventData({ ...eventData, endTime: e.target.value })}
-        />
-      </div>
-    </div>
-
-    {/* Event Description */}
-    <label className="block text-gray-700 dark:text-gray-300 mt-3">Description</label>
-    <textarea
-      rows="3"
-      placeholder="Enter event details"
-      className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-      value={eventData.description || ""}
-      onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
-    ></textarea>
-
-    {/* Event Color Selector */}
-    <label className="block text-gray-700 dark:text-gray-300 mt-3">Event Color</label>
-    <select
-      className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
-      value={eventData.color || "#007bff"}
-      onChange={(e) => setEventData({ ...eventData, color: e.target.value })}
-    >
-      <option value="#007bff">Blue</option>
-      <option value="#28a745">Green</option>
-      <option value="#dc3545">Red</option>
-      <option value="#ffc107">Yellow</option>
-      <option value="#6f42c1">Purple</option>
-    </select>
-
-    {/* Buttons */}
-    <div className="flex justify-end gap-2 mt-5">
-      {selectedEvent && (
-        <button onClick={handleEventDelete} className="delete-btn px-4 py-2">
-          Delete
-        </button>
-      )}
-      <button onClick={() => setModalOpen(false)} className="cancel-btn px-4 py-2">
-        Cancel
-      </button>
-      <button onClick={handleEventSubmit} className="save-btn px-4 py-2">
-        {selectedEvent ? "Update Event" : "Add Event"}
-      </button>
-    </div>
-  </div>
-</Modal>
 
 
-      {/* ✅ Settings Modal */}
-      <Modal isOpen={settingsOpen} onRequestClose={() => setSettingsOpen(false)} className="modal" overlayClassName="modal-overlay">
-        <div className="modal-content">
-          <h3>Settings</h3>
-          <label>
-            <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
-            Dark Mode
-          </label>
-          <br />
-          <label>
-            <input type="checkbox" checked={notifications} onChange={() => setNotifications(!notifications)} />
-            Enable Notifications
-          </label>
-          <br />
-          <button onClick={() => setSettingsOpen(false)} className="cancel-btn">Close</button>
-        </div>
-      </Modal>
+        {/* Modal for Creating or Editing Event */}
+        {modalOpen && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>{selectedEvent ? "Edit Event" : "Add Event"}</h3>
+              <input
+                name="title"
+                placeholder="Title"
+                value={formData.title}
+                onChange={handleInputChange}
+              />
+              <input
+                type="datetime-local"
+                name="start"
+                value={moment(formData.start).format("YYYY-MM-DDTHH:mm")}
+                onChange={(e) => setFormData({ ...formData, start: e.target.value })}
+              />
+              <input
+                type="datetime-local"
+                name="end"
+                value={moment(formData.end).format("YYYY-MM-DDTHH:mm")}
+                onChange={(e) => setFormData({ ...formData, end: e.target.value })}
+              />
+              <textarea
+                name="description"
+                placeholder="Description"
+                value={formData.description}
+                onChange={handleInputChange}
+              />
+              <select name="color" value={formData.color} onChange={handleInputChange}>
+                <option value="#3174ad">Blue</option>
+                <option value="#ad3131">Red</option>
+                <option value="#31ad6c">Green</option>
+                <option value="#ffc107">Yellow</option>
+                <option value="#6f42c1">Purple</option>
+              </select>
+              <div className="modal-actions">
+                <button onClick={handleSubmit} className="save-btn">
+                  {selectedEvent ? "Update" : "Add"}
+                </button>
+                <button onClick={() => setModalOpen(false)} className="cancel-btn">Cancel</button>
+                {selectedEvent && (
+                  <button onClick={handleDelete} className="delete-btn">Delete</button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Modal */}
+        <Modal
+          isOpen={settingsOpen}
+          onRequestClose={() => setSettingsOpen(false)}
+          className="modal"
+          overlayClassName="modal-overlay"
+        >
+          <div className="modal-content">
+            <h2 className="text-xl mb-4">Settings</h2>
+            <label className="setting-row">
+              <span>Enable Dark Mode</span>
+              <input
+                type="checkbox"
+                checked={darkMode}
+                onChange={() => setDarkMode(!darkMode)}
+              />
+            </label>
+            <div className="flex justify-end mt-4">
+              <button className="cancel-btn" onClick={() => setSettingsOpen(false)}>Close</button>
+            </div>
+          </div>
+        </Modal>
+      </main>
     </div>
   );
 };
