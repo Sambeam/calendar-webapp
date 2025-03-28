@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Styles */
+/* 🌐 Global Styles */
 body, html {
   margin: 0;
   padding: 0;
@@ -11,22 +11,16 @@ body, html {
   transition: background-color 0.3s, color 0.3s;
 }
 
-/* Light Mode */
-body {
-  background-color: #F8FAFC;
-  color: #333;
-}
-
-/* ✅ Fix: Ensure Dark Mode Applies to Body */
+/* 🌙 Dark Mode Root */
 .dark {
   background-color: #121212;
   color: white;
 }
 
-/* ✅ Sidebar */
+/* 📌 Sidebar Layout */
 .sidebar {
   width: 250px;
-  background-color: #1E3A8A; /* Dark blue */
+  background-color: #1E3A8A;
   color: white;
   padding: 20px;
   display: flex;
@@ -36,10 +30,10 @@ body {
 }
 
 .dark .sidebar {
-  background-color: #0D1B4C; /* Darker blue for dark mode */
+  background-color: #0D1B4C;
 }
 
-/* ✅ Dashboard Container */
+/* 📐 Dashboard Container */
 .dashboard-container {
   display: flex;
   height: 100vh;
@@ -48,18 +42,18 @@ body {
 }
 
 .dark .dashboard-container {
-  background-color: #181818; /* Dark mode background */
+  background-color: #181818;
 }
 
-/* ✅ Content */
+/* 📄 Content Area */
 .content {
   flex-grow: 1;
-  background-color: #F8FAFC;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  background-color: #F8FAFC;
   transition: background-color 0.3s ease;
+  overflow-y: auto;
 }
 
 .dark .content {
@@ -67,7 +61,7 @@ body {
   color: white;
 }
 
-/* ✅ Calendar Container */
+/* 📅 Calendar Container */
 .calendar-container {
   background-color: white;
   padding: 20px;
@@ -76,7 +70,7 @@ body {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  height: calc(100vh - 40px);
 }
 
 .dark .calendar-container {
@@ -84,37 +78,54 @@ body {
   color: white;
 }
 
-/* ✅ Modal Overlay */
+/* 🧊 Modal Overlay */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5); /* Dark background */
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; /* Ensure it's on top */
+  z-index: 1000;
 }
 
-/* ✅ Modals */
+/* 📦 Modal Container */
 .modal {
-  background: white; /* Solid white background */
+  background: white;
   padding: 20px;
   border-radius: 8px;
   width: 450px;
   max-width: 90%;
   position: relative;
-  z-index: 1001; /* Ensure it's above the overlay */
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3); /* Adds depth */
+  z-index: 1001;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
 }
+
 .dark .modal {
   background: #222;
   color: white;
 }
 
-/* ✅ Buttons */
+/* 🧠 Forms */
+input, textarea, select {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.dark input, .dark textarea, .dark select {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+}
+
+/* 🔘 Buttons */
 button {
   padding: 10px 15px;
   border: none;
@@ -125,37 +136,20 @@ button {
 }
 
 button:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
-/* ✅ Save, Cancel, Update, Delete Buttons */
 .save-btn { background: green; color: white; }
 .cancel-btn { background: gray; color: white; }
 .update-btn { background: blue; color: white; }
 .delete-btn { background: red; color: white; }
 
-/* ✅ Dark Mode Buttons */
-.dark .save-btn { background: #0f5c0f; color: white; }
-.dark .cancel-btn { background: #444; color: white; }
-.dark .update-btn { background: #0044cc; color: white; }
-.dark .delete-btn { background: #880000; color: white; }
-/* ✅ Form Inputs */
-input, textarea {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
+.dark .save-btn { background: #0f5c0f; }
+.dark .cancel-btn { background: #444; }
+.dark .update-btn { background: #0044cc; }
+.dark .delete-btn { background: #880000; }
 
-.dark input, .dark textarea {
-  background: #333;
-  color: white;
-  border: 1px solid #555;
-}
-
-/* ✅ Ensure Dark Mode Applies to FullCalendar */
+/* 📅 FullCalendar Dark Mode */
 .fc {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
@@ -165,13 +159,12 @@ input, textarea {
   color: white !important;
 }
 
-.dark .fc-daygrid-day, 
-.dark .fc-daygrid-day-number, 
+.dark .fc-daygrid-day,
+.dark .fc-daygrid-day-number,
 .dark .fc-toolbar-title {
   color: white !important;
 }
 
-/* ✅ Ensure Dark Mode for FullCalendar Toolbar */
 .dark .fc-button {
   background: #444 !important;
   color: white !important;
@@ -180,4 +173,18 @@ input, textarea {
 
 .dark .fc-button:hover {
   background: #555 !important;
+}
+
+/* 🛠 Utility Layout Fixes */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.day-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
