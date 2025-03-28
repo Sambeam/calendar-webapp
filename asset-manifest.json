@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/calendar-webapp/static/css/main.f52295ca.css",
-    "main.js": "/calendar-webapp/static/js/main.dc717805.js",
-    "static/js/453.772fd54b.chunk.js": "/calendar-webapp/static/js/453.772fd54b.chunk.js",
+    "main.css": "/calendar-webapp/static/css/main.fc557b58.css",
+    "main.js": "/calendar-webapp/static/js/main.0d2a8cd4.js",
+    "static/js/453.abcb5eb8.chunk.js": "/calendar-webapp/static/js/453.abcb5eb8.chunk.js",
     "index.html": "/calendar-webapp/index.html",
-    "main.f52295ca.css.map": "/calendar-webapp/static/css/main.f52295ca.css.map",
-    "main.dc717805.js.map": "/calendar-webapp/static/js/main.dc717805.js.map",
-    "453.772fd54b.chunk.js.map": "/calendar-webapp/static/js/453.772fd54b.chunk.js.map"
+    "main.fc557b58.css.map": "/calendar-webapp/static/css/main.fc557b58.css.map",
+    "main.0d2a8cd4.js.map": "/calendar-webapp/static/js/main.0d2a8cd4.js.map",
+    "453.abcb5eb8.chunk.js.map": "/calendar-webapp/static/js/453.abcb5eb8.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.f52295ca.css",
-    "static/js/main.dc717805.js"
+    "static/css/main.fc557b58.css",
+    "static/js/main.0d2a8cd4.js"
   ]
 }
