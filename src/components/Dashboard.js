@@ -14,6 +14,7 @@ import {
 import { auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "../styles.css";
 
 const localizer = momentLocalizer(moment);
 Modal.setAppElement("#root");
@@ -22,14 +23,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [events, setEvents] = useState([]);
+  const [firebaseEvents, setFirebaseEvents] = useState({});
   const [modalOpen, setModalOpen] = useState(false);
-  const [recurrenceModalOpen, setRecurrenceModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [recurrenceModalOpen, setRecurrenceModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [deleteMode, setDeleteMode] = useState("single"); // "single" or "all"
-  const [darkMode, setDarkMode] = useState(() =>
-    JSON.parse(localStorage.getItem("darkMode") || "false")
-  );
+  const [deleteMode, setDeleteMode] = useState("single");
+  const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem("darkMode")) || false);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -37,6 +38,7 @@ const Dashboard = () => {
     end: new Date(),
     color: "#3174ad",
   });
+
   const [recurrence, setRecurrence] = useState({
     frequency: "weekly",
     interval: 1,
@@ -50,10 +52,11 @@ const Dashboard = () => {
       else setUser(u);
     });
     return () => unsub();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     localStorage.setItem("darkMode", JSON.stringify(darkMode));
+    document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
   useEffect(() => {
@@ -62,24 +65,28 @@ const Dashboard = () => {
     const eventsRef = ref(db, `events/${user.uid}`);
     onValue(eventsRef, (snapshot) => {
       const data = snapshot.val() || {};
+      setFirebaseEvents(data);
+
       const loaded = [];
 
       Object.entries(data).forEach(([id, e]) => {
-        if (e.recurrence) {
-          const startDate = new Date(e.start);
-          const endDate = new Date(e.recurrence.endDate);
+        const startDate = new Date(e.start);
+        const duration = new Date(e.end) - startDate;
+
+        if (e.recurrence?.days?.length > 0 && e.recurrence.endDate) {
           let current = new Date(startDate);
-          while (current <= endDate) {
-            const dayMatch = e.recurrence.days.includes(current.getDay());
-            if (e.recurrence.frequency === "weekly" && dayMatch) {
+          const endRec = new Date(e.recurrence.endDate);
+
+          while (current <= endRec) {
+            if (e.recurrence.days.includes(current.getDay())) {
+              const instanceStart = new Date(current);
+              const instanceEnd = new Date(current.getTime() + duration);
               loaded.push({
                 ...e,
                 id: `${id}-${current.toISOString()}`,
                 baseId: id,
-                start: new Date(current),
-                end: new Date(
-                  new Date(current).getTime() + (new Date(e.end) - new Date(e.start))
-                ),
+                start: instanceStart,
+                end: instanceEnd,
               });
             }
             current.setDate(current.getDate() + 1);
@@ -98,12 +105,7 @@ const Dashboard = () => {
   const handleSelectSlot = ({ start, end }) => {
     setSelectedEvent(null);
     setFormData({ title: "", description: "", start, end, color: "#3174ad" });
-    setRecurrence({
-      frequency: "weekly",
-      interval: 1,
-      days: [],
-      endDate: "",
-    });
+    setRecurrence({ frequency: "weekly", interval: 1, days: [], endDate: "" });
     setModalOpen(true);
   };
 
@@ -116,6 +118,12 @@ const Dashboard = () => {
       end: event.end,
       color: event.color || "#3174ad",
     });
+    setRecurrence(event.recurrence || {
+      frequency: "weekly",
+      interval: 1,
+      days: [],
+      endDate: "",
+    });
     setDeleteMode("single");
     setModalOpen(true);
   };
@@ -127,7 +135,9 @@ const Dashboard = () => {
 
   const handleSubmit = () => {
     if (!formData.title.trim()) return alert("Title is required");
+
     const db = getDatabase();
+    const eventsRef = ref(db, `events/${user.uid}`);
     const payload = {
       ...formData,
       start: new Date(formData.start).toISOString(),
@@ -138,12 +148,13 @@ const Dashboard = () => {
       payload.recurrence = recurrence;
     }
 
-    if (selectedEvent?.baseId) {
-      update(ref(db, `events/${user.uid}/${selectedEvent.baseId}`), payload);
-    } else if (selectedEvent && !selectedEvent.recurrence) {
-      update(ref(db, `events/${user.uid}/${selectedEvent.id}`), payload);
+    const isEditing = selectedEvent !== null;
+    const eventId = selectedEvent?.baseId || selectedEvent?.id;
+
+    if (isEditing && firebaseEvents[eventId]) {
+      update(ref(db, `events/${user.uid}/${eventId}`), payload);
     } else {
-      push(ref(db, `events/${user.uid}`), payload);
+      push(eventsRef, payload);
     }
 
     setModalOpen(false);
@@ -152,11 +163,12 @@ const Dashboard = () => {
 
   const handleDelete = () => {
     const db = getDatabase();
-    if (deleteMode === "all" && selectedEvent?.baseId) {
-      remove(ref(db, `events/${user.uid}/${selectedEvent.baseId}`));
-    } else if (deleteMode === "all" && selectedEvent && !selectedEvent.recurrence) {
-      remove(ref(db, `events/${user.uid}/${selectedEvent.id}`));
+    const targetId = selectedEvent?.baseId || selectedEvent?.id;
+
+    if (deleteMode === "all") {
+      remove(ref(db, `events/${user.uid}/${targetId}`));
     } else {
+      // Soft delete from UI only
       setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
     }
 
@@ -195,7 +207,6 @@ const Dashboard = () => {
             events={events}
             startAccessor="start"
             endAccessor="end"
-            style={{ height: "100%" }}
             views={["month", "week", "day", "agenda"]}
             selectable
             onSelectSlot={handleSelectSlot}
