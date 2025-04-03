@@ -17,7 +17,10 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles.css";
 
 const localizer = momentLocalizer(moment);
-Modal.setAppElement("#root");
+if (process.env.NODE_ENV !== 'test') {
+  Modal.setAppElement("#root");
+}
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
